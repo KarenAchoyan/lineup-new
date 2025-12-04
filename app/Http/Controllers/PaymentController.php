@@ -139,13 +139,14 @@ class PaymentController extends Controller
                 : "Payment for {$student->name} - " . now()->format('F Y'),
         ]);
 
-        // Generate Flitt checkout URL
-        $checkoutUrl = $this->generateFlittCheckoutUrl($payment, $request->user());
+        // Generate Flitt checkout data
+        $checkoutData = $this->generateFlittCheckoutData($payment, $request->user());
 
         // Return JSON response for AJAX requests
         return response()->json([
             'success' => true,
-            'checkout_url' => $checkoutUrl,
+            'checkout_data' => $checkoutData,
+            'checkout_url' => $checkoutData['url'],
             'order_id' => $orderId,
         ]);
     }
@@ -191,9 +192,9 @@ class PaymentController extends Controller
     }
 
     /**
-     * Generate Flitt checkout URL.
+     * Generate Flitt checkout data for POST request.
      */
-    private function generateFlittCheckoutUrl(Payment $payment, $user)
+    private function generateFlittCheckoutData(Payment $payment, $user)
     {
         $merchantId = env('FLITT_MERCHANT_ID', 4054488);
         $secretKey = env('FLITT_SECRET_KEY', 'wYdSnGkTGhQUqBWhEhilf7j9tOIdKFze');
@@ -216,8 +217,11 @@ class PaymentController extends Controller
             'signature' => $signature,
         ];
 
-        // Return the checkout URL (Flitt will redirect to this)
-        return $apiBase . '/checkout/redirect?' . http_build_query($params);
+        // Return checkout data with POST URL and parameters
+        return [
+            'url' => $apiBase . '/checkout/redirect',
+            'params' => $params,
+        ];
     }
 
     /**

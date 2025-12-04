@@ -42,6 +42,46 @@ window.axios.interceptors.request.use(
     }
 );
 
+// Axios interceptor to handle 419 errors and refresh CSRF token
+window.axios.interceptors.response.use(
+    (response) => {
+        // Update CSRF token from response headers if available
+        const newToken = response.headers['x-csrf-token'];
+        if (newToken) {
+            const metaTag = document.head.querySelector('meta[name="csrf-token"]');
+            if (metaTag) {
+                metaTag.setAttribute('content', newToken);
+            }
+        }
+        return response;
+    },
+    (error) => {
+        if (error.response?.status === 419) {
+            // Get new CSRF token from response
+            const newToken = error.response.headers['x-csrf-token'] || 
+                           error.response.data?.csrf_token;
+            
+            if (newToken) {
+                // Update meta tag
+                const metaTag = document.head.querySelector('meta[name="csrf-token"]');
+                if (metaTag) {
+                    metaTag.setAttribute('content', newToken);
+                }
+                
+                // Retry the original request with new token
+                if (error.config) {
+                    error.config.headers['X-CSRF-TOKEN'] = newToken;
+                    return window.axios.request(error.config);
+                }
+            } else {
+                // If no token, reload page
+                window.location.reload();
+            }
+        }
+        return Promise.reject(error);
+    }
+);
+
 /**
  * Echo exposes an expressive API for subscribing to channels and listening
  * for events that are broadcast by Laravel. Echo and event broadcasting

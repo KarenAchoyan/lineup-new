@@ -76,12 +76,15 @@ class BannerController extends Controller
             // Handle image upload
             if ($request->hasFile('image')) {
                 // Delete old image if exists
-                if ($banner->image && Storage::disk('public')->exists($banner->image)) {
-                    Storage::disk('public')->delete($banner->image);
+                if ($banner->image) {
+                    $imagePath = str_replace('public/', '', $banner->image);
+                    if (Storage::disk('public')->exists($imagePath)) {
+                        Storage::disk('public')->delete($imagePath);
+                    }
                 }
                 
                 // Store new image
-                $updateData['image'] = $request->file('image')->store('banners', 'public');
+                $updateData['image'] = 'public/' . $request->file('image')->store('banners', 'public');
             }
 
             // Update the model

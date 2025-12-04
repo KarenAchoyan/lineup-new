@@ -48,7 +48,7 @@ class NewsController extends Controller
         }
 
         if ($request->hasFile('avatar')) {
-            $validated['avatar'] = $request->file('avatar')->store('news', 'public');
+            $validated['avatar'] = 'public/' . $request->file('avatar')->store('news', 'public');
         }
 
         News::create($validated);
@@ -89,9 +89,10 @@ class NewsController extends Controller
         // Only update avatar if a new file is uploaded
         if ($request->hasFile('avatar')) {
             if ($news->avatar) {
-                Storage::disk('public')->delete($news->avatar);
+                $imagePath = str_replace('public/', '', $news->avatar);
+                Storage::disk('public')->delete($imagePath);
             }
-            $validated['avatar'] = $request->file('avatar')->store('news', 'public');
+            $validated['avatar'] = 'public/' . $request->file('avatar')->store('news', 'public');
         } else {
             // Remove avatar from validated array to preserve existing avatar
             unset($validated['avatar']);
@@ -106,7 +107,8 @@ class NewsController extends Controller
     public function destroy(News $news)
     {
         if ($news->avatar) {
-            Storage::disk('public')->delete($news->avatar);
+            $imagePath = str_replace('public/', '', $news->avatar);
+            Storage::disk('public')->delete($imagePath);
         }
 
         $news->delete();

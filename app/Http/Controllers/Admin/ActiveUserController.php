@@ -41,7 +41,7 @@ class ActiveUserController extends Controller
         ]);
 
         if ($request->hasFile('avatar')) {
-            $validated['avatar'] = $request->file('avatar')->store('active-users', 'public');
+            $validated['avatar'] = 'public/' . $request->file('avatar')->store('active-users', 'public');
         }
 
         ActiveUser::create($validated);
@@ -75,9 +75,10 @@ class ActiveUserController extends Controller
 
         if ($request->hasFile('avatar')) {
             if ($activeUser->avatar) {
-                Storage::disk('public')->delete($activeUser->avatar);
+                $imagePath = str_replace('public/', '', $activeUser->avatar);
+                Storage::disk('public')->delete($imagePath);
             }
-            $validated['avatar'] = $request->file('avatar')->store('active-users', 'public');
+            $validated['avatar'] = 'public/' . $request->file('avatar')->store('active-users', 'public');
         } else {
             // Remove avatar from validated data if no new file is uploaded
             unset($validated['avatar']);
@@ -92,7 +93,8 @@ class ActiveUserController extends Controller
     public function destroy(ActiveUser $activeUser)
     {
         if ($activeUser->avatar) {
-            Storage::disk('public')->delete($activeUser->avatar);
+            $imagePath = str_replace('public/', '', $activeUser->avatar);
+            Storage::disk('public')->delete($imagePath);
         }
 
         $activeUser->delete();

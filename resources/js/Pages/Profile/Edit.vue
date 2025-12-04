@@ -140,9 +140,9 @@ const makePayment = async (studentId, groupId) => {
             }
         );
 
-        if (response.data.success && response.data.checkout_url) {
-            // Redirect to Flitt payment page
-            window.location.href = response.data.checkout_url;
+        if (response.data.success && response.data.checkout_data) {
+            // Submit POST form to Flitt
+            submitFlittForm(response.data.checkout_data);
         } else {
             alert(response.data.message || 'Failed to create payment');
             paymentLoading.value = false;
@@ -153,6 +153,28 @@ const makePayment = async (studentId, groupId) => {
         alert(errorMessage);
         paymentLoading.value = false;
     }
+};
+
+// Submit POST form to Flitt
+const submitFlittForm = (checkoutData) => {
+    // Create a form element
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = checkoutData.url;
+    form.style.display = 'none';
+
+    // Add all parameters as hidden inputs
+    Object.keys(checkoutData.params).forEach(key => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = checkoutData.params[key];
+        form.appendChild(input);
+    });
+
+    // Append form to body and submit
+    document.body.appendChild(form);
+    form.submit();
 };
 
 const openMessage = (message) => {

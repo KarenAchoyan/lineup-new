@@ -33,7 +33,7 @@ class GalleryController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            $validated['image'] = $request->file('image')->store('galleries', 'public');
+            $validated['image'] = 'public/' . $request->file('image')->store('galleries', 'public');
         }
 
         Gallery::create($validated);
@@ -59,9 +59,10 @@ class GalleryController extends Controller
 
         if ($request->hasFile('image')) {
             if ($gallery->image) {
-                Storage::disk('public')->delete($gallery->image);
+                $imagePath = str_replace('public/', '', $gallery->image);
+                Storage::disk('public')->delete($imagePath);
             }
-            $validated['image'] = $request->file('image')->store('galleries', 'public');
+            $validated['image'] = 'public/' . $request->file('image')->store('galleries', 'public');
         }
 
         $gallery->update($validated);
@@ -73,7 +74,8 @@ class GalleryController extends Controller
     public function destroy(Gallery $gallery)
     {
         if ($gallery->image) {
-            Storage::disk('public')->delete($gallery->image);
+            $imagePath = str_replace('public/', '', $gallery->image);
+            Storage::disk('public')->delete($imagePath);
         }
 
         $gallery->delete();

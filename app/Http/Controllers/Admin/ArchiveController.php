@@ -54,7 +54,7 @@ class ArchiveController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            $validated['image'] = $request->file('image')->store('archive', 'public');
+            $validated['image'] = 'public/' . $request->file('image')->store('archive', 'public');
         }
 
         ArchiveItem::create($validated);
@@ -99,11 +99,14 @@ class ArchiveController extends Controller
         // Handle image upload - only update image if a new file is uploaded
         if ($request->hasFile('image')) {
             // Delete old image if exists
-            if ($archive->image && Storage::disk('public')->exists($archive->image)) {
-                Storage::disk('public')->delete($archive->image);
+            if ($archive->image) {
+                $imagePath = str_replace('public/', '', $archive->image);
+                if (Storage::disk('public')->exists($imagePath)) {
+                    Storage::disk('public')->delete($imagePath);
+                }
             }
             // Store new image
-            $validated['image'] = $request->file('image')->store('archive', 'public');
+            $validated['image'] = 'public/' . $request->file('image')->store('archive', 'public');
         } else {
             // Remove image from validated array if no new file is uploaded
             // This ensures the existing image is not overwritten
@@ -122,7 +125,8 @@ class ArchiveController extends Controller
     public function destroy(ArchiveItem $archive)
     {
         if ($archive->image) {
-            Storage::disk('public')->delete($archive->image);
+            $imagePath = str_replace('public/', '', $archive->image);
+            Storage::disk('public')->delete($imagePath);
         }
 
         $archive->delete();

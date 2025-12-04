@@ -43,7 +43,7 @@ class StaffController extends Controller
         ]);
 
         if ($request->hasFile('avatar')) {
-            $validated['avatar'] = $request->file('avatar')->store('staff', 'public');
+            $validated['avatar'] = 'public/' . $request->file('avatar')->store('staff', 'public');
         }
 
         Staff::create($validated);
@@ -80,11 +80,14 @@ class StaffController extends Controller
         // Handle image upload - only update avatar if a new file is uploaded
         if ($request->hasFile('avatar')) {
             // Delete old image if exists
-            if ($staff->avatar && Storage::disk('public')->exists($staff->avatar)) {
-                Storage::disk('public')->delete($staff->avatar);
+            if ($staff->avatar) {
+                $imagePath = str_replace('public/', '', $staff->avatar);
+                if (Storage::disk('public')->exists($imagePath)) {
+                    Storage::disk('public')->delete($imagePath);
+                }
             }
             // Store new image
-            $validated['avatar'] = $request->file('avatar')->store('staff', 'public');
+            $validated['avatar'] = 'public/' . $request->file('avatar')->store('staff', 'public');
         } else {
             // Remove avatar from validated array if no new file is uploaded
             // This ensures the existing avatar is not overwritten
@@ -100,7 +103,8 @@ class StaffController extends Controller
     public function destroy(Staff $staff)
     {
         if ($staff->avatar) {
-            Storage::disk('public')->delete($staff->avatar);
+            $imagePath = str_replace('public/', '', $staff->avatar);
+            Storage::disk('public')->delete($imagePath);
         }
 
         $staff->delete();

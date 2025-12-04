@@ -69,7 +69,7 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::get('/profile/settings', [ProfileController::class, 'settings'])->name('profile.settings');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -87,7 +87,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/profile/payments/{student}/create', [PaymentController::class, 'createCheckout'])->name('profile.payments.create');
 
     // Admin Routes
-    Route::prefix('admin')->name('admin.')->middleware('admin')->group(function () {
+    Route::prefix('admin')->name('admin.')->middleware(['admin', 'verified'])->group(function () {
         Route::resource('archive', AdminArchiveController::class)->except(['update']);
         Route::post('archive/{archive}', [AdminArchiveController::class, 'update'])->name('archive.update');
         Route::resource('branches', \App\Http\Controllers\Admin\BranchController::class);
@@ -133,7 +133,7 @@ Route::middleware('auth')->group(function () {
     });
 
     // Teacher Routes
-    Route::prefix('teacher')->name('teacher.')->middleware('teacher')->group(function () {
+    Route::prefix('teacher')->name('teacher.')->middleware(['teacher', 'verified'])->group(function () {
         Route::resource('groups', \App\Http\Controllers\Teacher\GroupController::class);
         Route::get('groups/search/students', [\App\Http\Controllers\Teacher\GroupController::class, 'searchStudents'])->name('groups.search-students');
         Route::get('attendance', [\App\Http\Controllers\Teacher\AttendanceController::class, 'index'])->name('attendance.index');
@@ -150,7 +150,7 @@ Route::middleware('auth')->group(function () {
 });
 
 // Payment webhook and success redirect (no auth required)
-Route::post('/api/payments/webhook', [PaymentController::class, 'webhook'])->name('payments.webhook');
+Route::get('/api/payments/webhook', [PaymentController::class, 'webhook'])->name('payments.webhook');
 Route::get('/payment-success', [PaymentController::class, 'success'])->name('payment.success');
 
 // Locale switching route

@@ -47,7 +47,7 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
-        // New users are always regular users (parents), redirect to profile
-        return redirect(route('profile.edit'));
+        // Redirect to email verification notice
+        return redirect(route('verification.notice'));
     }
 }

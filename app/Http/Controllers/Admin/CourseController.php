@@ -56,7 +56,7 @@ class CourseController extends Controller
         }
 
         if ($request->hasFile('background_image')) {
-            $validated['background_image'] = $request->file('background_image')->store('courses', 'public');
+            $validated['background_image'] = 'public/' . $request->file('background_image')->store('courses', 'public');
         }
 
         $branches = $validated['branches'] ?? [];
@@ -107,9 +107,10 @@ class CourseController extends Controller
 
         if ($request->hasFile('background_image')) {
             if ($course->background_image) {
-                Storage::disk('public')->delete($course->background_image);
+                $imagePath = str_replace('public/', '', $course->background_image);
+                Storage::disk('public')->delete($imagePath);
             }
-            $validated['background_image'] = $request->file('background_image')->store('courses', 'public');
+            $validated['background_image'] = 'public/' . $request->file('background_image')->store('courses', 'public');
         }
 
         $branches = $validated['branches'] ?? [];
@@ -125,7 +126,8 @@ class CourseController extends Controller
     public function destroy(Course $course)
     {
         if ($course->background_image) {
-            Storage::disk('public')->delete($course->background_image);
+            $imagePath = str_replace('public/', '', $course->background_image);
+            Storage::disk('public')->delete($imagePath);
         }
 
         $course->delete();

@@ -40,6 +40,12 @@ class HandleInertiaRequests extends Middleware
             }
         }
         
+        // Access session to prevent expiration during active use
+        // Simply accessing the session extends its lifetime
+        if ($request->hasSession()) {
+            $request->session()->all();
+        }
+        
         return array_merge(parent::share($request), [
             'auth' => [
                 'user' => $user ? [
@@ -57,6 +63,7 @@ class HandleInertiaRequests extends Middleware
                     'is_teacher' => $user->isTeacher(),
                 ] : null,
             ],
+            'csrf_token' => csrf_token(), // Share CSRF token with frontend
             'ziggy' => function () use ($request) {
                 return array_merge((new Ziggy)->toArray(), [
                     'location' => $request->url(),

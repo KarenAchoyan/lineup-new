@@ -42,6 +42,11 @@ class AuthenticatedSessionController extends Controller
             $user->load('roles');
         }
 
+        // Check if email is verified
+        if (!$user->hasVerifiedEmail()) {
+            return redirect()->route('verification.notice');
+        }
+
         // Redirect based on role
         if ($user->hasRole('admin')) {
             return redirect()->intended(route('dashboard'));
