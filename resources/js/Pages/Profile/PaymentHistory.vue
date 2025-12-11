@@ -55,7 +55,7 @@ const makePayment = async () => {
     try {
         const response = await window.axios.post(
             route('profile.payments.create', props.student.id),
-            { amount: 30 },
+            { amount: props.student.course_price || 30 },
             {
                 headers: {
                     'X-CSRF-TOKEN': csrfToken || '',
@@ -87,9 +87,15 @@ const cancelPayment = () => {
     paymentLoading.value = false;
 };
 
-// Submit POST form to Flitt
+// Submit POST form to Flitt or redirect to checkout URL
 const submitFlittForm = (checkoutData) => {
-    // Create a form element
+    // If params are empty, redirect directly to checkout_url (from /api/checkout/url endpoint)
+    if (!checkoutData.params || Object.keys(checkoutData.params).length === 0) {
+        window.location.href = checkoutData.url;
+        return;
+    }
+
+    // Otherwise, submit POST form (for /api/checkout/redirect endpoint)
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = checkoutData.url;
@@ -184,7 +190,7 @@ const getStatusText = (status) => {
                             <svg v-else class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                             </svg>
-                            {{ paymentLoading ? (t('processing') || 'Processing...') : (t('make_payment') || 'Make Payment') + ' (30 GEL)' }}
+                            {{ paymentLoading ? (t('processing') || 'Processing...') : (t('make_payment') || 'Make Payment') + ` (${props.student.course_price || 30} GEL)` }}
                         </button>
                     </div>
                     <div v-else class="w-full">

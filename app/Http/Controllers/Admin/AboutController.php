@@ -66,14 +66,14 @@ class AboutController extends Controller
             if ($request->hasFile('image')) {
                 // Delete old image if exists
                 if ($about->image) {
-                    $imagePath = str_replace('public/', '', $about->image);
+                    $imagePath = str_replace('app/public/', '', $about->image);
                     if (Storage::disk('public')->exists($imagePath)) {
                         Storage::disk('public')->delete($imagePath);
                     }
                 }
                 
                 // Store new image
-                $updateData['image'] = 'public/' . $request->file('image')->store('about', 'public');
+                $updateData['image'] = 'app/public/' . $request->file('image')->store('about', 'public');
             }
             // If no image is uploaded, keep the existing image (don't update the field)
 

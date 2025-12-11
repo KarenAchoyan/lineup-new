@@ -1,7 +1,7 @@
 <script setup>
 import ProfileLayout from '@/Layouts/ProfileLayout.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import axios from 'axios';
 import { useTranslation } from '@/composables/useTranslation';
 
@@ -42,6 +42,9 @@ const loadingAttendance = ref(false);
 const showMessages = ref(false);
 const selectedMessage = ref(null);
 const paymentLoading = ref(false);
+const paymentStatusMessage = ref(null);
+const paymentStatusType = ref(null); // 'success' or 'error'
+const checkingPaymentStatus = ref(false);
 
 const studentForm = useForm({
     name: '',
@@ -56,6 +59,30 @@ const availableBranches = computed(() => {
     const course = props.courses.find(c => c.id === selectedCourseId.value);
     return course ? course.branches : [];
 });
+
+// Check if student form is valid (all required fields filled)
+const isStudentFormValid = computed(() => {
+    return studentForm.name.trim() !== '' && 
+           studentForm.course_id !== '' && 
+           studentForm.branch_id !== '' &&
+           studentForm.birthday !== '';
+});
+
+// Filter student name input to allow only Armenian letters and spaces
+const filterArmenianStudentName = (event) => {
+    const input = event.target;
+    const value = input.value;
+    
+    // Filter out any non-Armenian characters
+    const filteredValue = value.split('').filter(char => {
+        return /[\u0531-\u0587\u0561-\u0587\s]/.test(char);
+    }).join('');
+    
+    if (value !== filteredValue) {
+        studentForm.name = filteredValue;
+        input.value = filteredValue;
+    }
+};
 
 const openStudentForm = (student = null) => {
     editingStudent.value = student;
@@ -93,7 +120,7 @@ const submitStudent = () => {
 };
 
 const deleteStudent = (studentId) => {
-    if (confirm('Are you sure you want to delete this student profile?')) {
+    if (confirm(t('delete_student_confirmation'))) {
         router.delete(route('profile.students.destroy', studentId));
     }
 };
@@ -125,11 +152,15 @@ const makePayment = async (studentId, groupId) => {
 
     const csrfToken = getCsrfToken();
 
+    // Find student to get course price
+    const student = props.students.find(s => s.id === studentId);
+    const paymentAmount = student?.course_price || 30;
+    
     try {
         const response = await axios.post(
             route('profile.payments.create', studentId),
             { 
-                amount: 30,
+                amount: paymentAmount,
                 group_id: groupId 
             },
             {
@@ -155,9 +186,15 @@ const makePayment = async (studentId, groupId) => {
     }
 };
 
-// Submit POST form to Flitt
+// Submit POST form to Flitt or redirect to checkout URL
 const submitFlittForm = (checkoutData) => {
-    // Create a form element
+    // If params are empty, redirect directly to checkout_url (from /api/checkout/url endpoint)
+    if (!checkoutData.params || Object.keys(checkoutData.params).length === 0) {
+        window.location.href = checkoutData.url;
+        return;
+    }
+
+    // Otherwise, submit POST form (for /api/checkout/redirect endpoint)
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = checkoutData.url;
@@ -232,6 +269,114 @@ const getMonthName = (month) => {
     return months[month - 1] || month;
 };
 
+// Check payment status from Flitt when returning from payment
+const checkPaymentStatus = async () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const orderId = urlParams.get('order_id');
+    const paymentId = urlParams.get('payment_id');
+    
+    // If we have order_id or payment_id in URL, check payment status
+    if (orderId || paymentId) {
+        checkingPaymentStatus.value = true;
+        paymentStatusMessage.value = null;
+        paymentStatusType.value = null;
+        
+        try {
+            const getCsrfToken = () => {
+                const metaToken = document.head.querySelector('meta[name="csrf-token"]');
+                if (metaToken && metaToken.content) {
+                    return metaToken.content;
+                }
+                const getCookie = (name) => {
+                    const value = `; ${document.cookie}`;
+                    const parts = value.split(`; ${name}=`);
+                    if (parts.length === 2) return parts.pop().split(';').shift();
+                    return null;
+                };
+                const xsrfToken = getCookie('XSRF-TOKEN');
+                if (xsrfToken) {
+                    return decodeURIComponent(xsrfToken);
+                }
+                return null;
+            };
+
+            const csrfToken = getCsrfToken();
+            
+            const response = await axios.post(
+                route('profile.payments.check-status'),
+                { 
+                    order_id: orderId || paymentId 
+                },
+                {
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken || '',
+                        'X-XSRF-TOKEN': csrfToken || '',
+                    },
+                }
+            );
+
+            if (response.data.success) {
+                const payment = response.data.payment;
+                const flittStatus = response.data.flitt_status;
+                
+                // Remove query parameters from URL
+                const newUrl = window.location.pathname;
+                window.history.replaceState({}, '', newUrl);
+                
+                // Show message based on payment status
+                if (payment.status === 'success') {
+                    paymentStatusType.value = 'success';
+                    paymentStatusMessage.value = t('payment_successful') || 'Payment completed successfully!';
+                } else if (payment.status === 'failed') {
+                    paymentStatusType.value = 'error';
+                    paymentStatusMessage.value = t('payment_failed') || 'Payment failed. Please try again.';
+                } else {
+                    paymentStatusType.value = 'error';
+                    paymentStatusMessage.value = t('payment_pending') || 'Payment is still pending.';
+                }
+                
+                // Reload page to show updated payment status
+                router.reload({ only: ['students'] });
+                
+                // Hide message after 5 seconds
+                setTimeout(() => {
+                    paymentStatusMessage.value = null;
+                    paymentStatusType.value = null;
+                }, 5000);
+            } else {
+                paymentStatusType.value = 'error';
+                paymentStatusMessage.value = response.data.message || (t('payment_check_failed') || 'Failed to check payment status.');
+                
+                // Remove query parameters from URL
+                const newUrl = window.location.pathname;
+                window.history.replaceState({}, '', newUrl);
+                
+                // Hide message after 5 seconds
+                setTimeout(() => {
+                    paymentStatusMessage.value = null;
+                    paymentStatusType.value = null;
+                }, 5000);
+            }
+        } catch (error) {
+            console.error('Error checking payment status:', error);
+            paymentStatusType.value = 'error';
+            paymentStatusMessage.value = error.response?.data?.message || (t('payment_check_error') || 'An error occurred while checking payment status.');
+            
+            // Remove query parameters from URL
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, '', newUrl);
+            
+            // Hide message after 5 seconds
+            setTimeout(() => {
+                paymentStatusMessage.value = null;
+                paymentStatusType.value = null;
+            }, 5000);
+        } finally {
+            checkingPaymentStatus.value = false;
+        }
+    }
+};
+
 // Load attendance data
 const loadAttendanceData = async () => {
     loadingAttendance.value = true;
@@ -297,6 +442,11 @@ attendanceData.value = {
 };
 
 // Set default selected tab
+// Check payment status when page loads (e.g., returning from Flitt payment)
+onMounted(() => {
+    checkPaymentStatus();
+});
+
 watch(() => props.students, (newStudents) => {
     if (newStudents && newStudents.length > 0 && !selectedAttendanceTab.value) {
         const firstStudentWithGroups = studentsWithGroups.value[0];
@@ -312,6 +462,89 @@ watch(() => props.students, (newStudents) => {
         <Head :title="t('profile_information')" />
 
         <div class="max-w-5xl mx-auto space-y-6">
+            <!-- Payment Status Message -->
+            <Transition name="fade">
+                <div
+                    v-if="paymentStatusMessage"
+                    :class="[
+                        'p-4 rounded-lg border-2 shadow-lg',
+                        paymentStatusType === 'success' 
+                            ? 'bg-green-500/10 border-green-500/30 text-green-400' 
+                            : 'bg-red-500/10 border-red-500/30 text-red-400'
+                    ]"
+                >
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <svg v-if="paymentStatusType === 'success'" class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                            </svg>
+                            <svg v-else class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                            </svg>
+                            <p class="font-semibold">{{ paymentStatusMessage }}</p>
+                        </div>
+                        <button
+                            @click="paymentStatusMessage = null; paymentStatusType = null"
+                            class="text-gray-400 hover:text-white transition-colors"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </Transition>
+
+            <!-- Loading Payment Status -->
+            <Transition name="fade">
+                <div
+                    v-if="checkingPaymentStatus"
+                    class="p-4 rounded-lg border-2 border-blue-500/30 bg-blue-500/10 text-blue-400"
+                >
+                    <div class="flex items-center gap-3">
+                        <svg class="w-6 h-6 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <p class="font-semibold">{{ t('checking_payment_status') || 'Checking payment status...' }}</p>
+                    </div>
+                </div>
+            </Transition>
+
+            <!-- Flash Success Message -->
+            <Transition name="fade">
+                <div
+                    v-if="$page.props.flash?.success"
+                    class="p-4 rounded-lg border-2 border-green-500/30 bg-green-500/10 text-green-400 shadow-lg"
+                >
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                            </svg>
+                            <p class="font-semibold">{{ $page.props.flash.success }}</p>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
+
+            <!-- Flash Error Message -->
+            <Transition name="fade">
+                <div
+                    v-if="$page.props.flash?.error"
+                    class="p-4 rounded-lg border-2 border-red-500/30 bg-red-500/10 text-red-400 shadow-lg"
+                >
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                            </svg>
+                            <p class="font-semibold">{{ $page.props.flash.error }}</p>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
+
             <!-- Page Title -->
             <div class="text-center mb-8">
                 <h1 class="text-[32px] md:text-[45px] font-bold text-[#C7C7C7] mb-2">
@@ -326,7 +559,7 @@ watch(() => props.students, (newStudents) => {
                         <svg class="w-6 h-6 text-[#F15A2B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                         </svg>
-                        Նամակներ
+                        {{ t('messages') }}
                         <span v-if="unreadCount > 0" class="ml-2 px-2 py-1 bg-red-600 text-white text-xs font-bold rounded-full">
                             {{ unreadCount }}
                         </span>
@@ -351,7 +584,7 @@ watch(() => props.students, (newStudents) => {
                                 </div>
                                 <p class="text-sm text-gray-400 mb-2">{{ message.latest_message_snippet }}</p>
                                 <div class="flex items-center gap-4 text-xs text-gray-500">
-                                    <span>From: {{ message.from_user_name }}</span>
+                                    <span>{{ t('from') }}: {{ message.from_user_name }}</span>
                                     <span>{{ message.created_at_human }}</span>
                                 </div>
                             </div>
@@ -384,7 +617,7 @@ watch(() => props.students, (newStudents) => {
                             
                             <div class="mb-4 pb-4 border-b border-[#4D4C4C]">
                                 <div class="flex items-center gap-2 text-sm text-gray-400 mb-2">
-                                    <span>From: <strong class="text-[#C7C7C7]">{{ selectedMessage.from_user_name }}</strong></span>
+                                    <span>{{ t('from') }}: <strong class="text-[#C7C7C7]">{{ selectedMessage.from_user_name }}</strong></span>
                                     <span>•</span>
                                     <span>{{ selectedMessage.created_at_human }}</span>
                                 </div>
@@ -418,9 +651,9 @@ watch(() => props.students, (newStudents) => {
                         </div>
                         <div>
                             <h3 class="text-lg font-semibold text-[#C7C7C7] group-hover:text-[#F15A2B] transition-colors">
-                                {{ t('settings') || 'Settings' }}
+                                {{ t('settings') }}
                             </h3>
-                            <p class="text-sm text-gray-400">Manage your profile information, password, and account settings</p>
+                            <p class="text-sm text-gray-400">{{ t('manage_profile_settings') }}</p>
                         </div>
                     </div>
                     <svg class="w-6 h-6 text-gray-400 group-hover:text-[#F15A2B] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -442,7 +675,7 @@ watch(() => props.students, (newStudents) => {
                 </div>
 
                 <div v-if="students.length === 0" class="text-[#C7C7C7] text-center py-8">
-                    No students added yet.
+                    {{ t('no_students_added_yet') }}
                 </div>
 
                 <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -469,9 +702,9 @@ watch(() => props.students, (newStudents) => {
                             </div>
                         </div>
                         <div class="text-sm text-[#C7C7C7] space-y-1">
-                            <p v-if="student.biradi"><span class="font-medium text-[#F15A2B]">Biradi:</span> {{ student.biradi }}</p>
+                            <p v-if="student.biradi"><span class="font-medium text-[#F15A2B]">{{ t('biradi') }}:</span> {{ student.biradi }}</p>
                             <p><span class="font-medium text-[#F15A2B]">{{ t('sections') }}:</span> {{ student.course_name }}</p>
-                            <p><span class="font-medium text-[#F15A2B]">{{ t('find_us') || 'Branch' }}:</span> {{ student.branch_name }}</p>
+                            <p><span class="font-medium text-[#F15A2B]">{{ t('find_us') }}:</span> {{ student.branch_name }}</p>
                             <p v-if="student.birthday">
                                 <span class="font-medium text-[#F15A2B]">{{ t('student_birthday') }}:</span> {{ new Date(student.birthday).toLocaleDateString() }}
                             </p>
@@ -481,13 +714,13 @@ watch(() => props.students, (newStudents) => {
                                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                                     </svg>
-                                    {{ t('already_paid') || 'Already Paid' }}
+                                    {{ t('already_paid') }}
                                 </p>
                                 <p v-else class="text-yellow-400 font-medium flex items-center gap-2">
                                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
                                     </svg>
-                                    {{ t('payment_required') || 'Payment Required' }}
+                                    {{ t('payment_required') }}
                                 </p>
                             </div>
                         </div>
@@ -502,7 +735,7 @@ watch(() => props.students, (newStudents) => {
                         <svg class="w-6 h-6 text-[#F15A2B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        Ներկա/Բացակա
+                        {{ t('attendance') }}
                     </h2>
                     
                     <!-- Month/Year Selector -->
@@ -510,7 +743,7 @@ watch(() => props.students, (newStudents) => {
                         <button
                             @click="previousMonth"
                             class="p-2 rounded-lg bg-[#5D5D5D] hover:bg-[#6D6D6D] text-[#C7C7C7] transition-colors"
-                            title="Previous Month"
+                            :title="t('previous_month')"
                         >
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -540,7 +773,7 @@ watch(() => props.students, (newStudents) => {
                             @click="nextMonth"
                             :disabled="isCurrentMonth"
                             class="p-2 rounded-lg bg-[#5D5D5D] hover:bg-[#6D6D6D] text-[#C7C7C7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Next Month"
+                            :title="t('next_month')"
                         >
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -551,7 +784,7 @@ watch(() => props.students, (newStudents) => {
                             @click="goToCurrentMonth"
                             class="px-3 py-2 text-sm bg-[#F15A2B] hover:bg-[#BF3206] text-white rounded-lg transition-colors"
                         >
-                            Այս Ամիս
+                            {{ t('this_month') }}
                         </button>
                     </div>
                 </div>
@@ -560,19 +793,19 @@ watch(() => props.students, (newStudents) => {
                     <svg class="w-16 h-16 mx-auto mb-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
-                    <p>No groups assigned to students yet.</p>
+                    <p>{{ t('no_groups_assigned') }}</p>
                 </div>
 
                 <div v-if="loadingAttendance" class="text-center py-12">
                     <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#F15A2B]"></div>
-                    <p class="mt-4 text-gray-400">Loading attendance data...</p>
+                    <p class="mt-4 text-gray-400">{{ t('loading_attendance_data') }}</p>
                 </div>
 
                 <div v-else-if="attendanceStudents.length === 0" class="text-center py-12 text-gray-400">
                     <svg class="w-16 h-16 mx-auto mb-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
-                    <p>No groups assigned to students yet.</p>
+                    <p>{{ t('no_groups_assigned') }}</p>
                 </div>
 
                 <div v-else>
@@ -629,7 +862,7 @@ watch(() => props.students, (newStudents) => {
                                                     group.has_paid_this_month ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'
                                                 ]"
                                             >
-                                                {{ group.has_paid_this_month ? 'Վճարված' : 'Չի վճարված' }}
+                                                {{ group.has_paid_this_month ? t('paid') : t('not_paid') }}
                                             </span>
                                         </div>
                                         <button
@@ -645,7 +878,7 @@ watch(() => props.students, (newStudents) => {
                                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                             </svg>
-                                            <span>{{ paymentLoading ? 'Վճարում...' : 'Վճարել' }}</span>
+                                            <span>{{ paymentLoading ? t('paying') : t('pay') }}</span>
                                         </button>
                                     </div>
 
@@ -653,22 +886,22 @@ watch(() => props.students, (newStudents) => {
                                     <div class="grid grid-cols-3 gap-3 mb-4">
                                         <div class="text-center bg-green-500/10 rounded-lg p-4 border border-green-500/20">
                                             <div class="text-3xl font-bold text-green-400">{{ group.present_count }}</div>
-                                            <div class="text-sm text-gray-400 mt-2">Ներկա</div>
+                                            <div class="text-sm text-gray-400 mt-2">{{ t('present') }}</div>
                                         </div>
                                         <div class="text-center bg-red-500/10 rounded-lg p-4 border border-red-500/20">
                                             <div class="text-3xl font-bold text-red-400">{{ group.absent_count }}</div>
-                                            <div class="text-sm text-gray-400 mt-2">Բացակա</div>
+                                            <div class="text-sm text-gray-400 mt-2">{{ t('absent') }}</div>
                                         </div>
                                         <div class="text-center bg-yellow-500/10 rounded-lg p-4 border border-yellow-500/20">
                                             <div class="text-3xl font-bold text-yellow-400">{{ group.excused_count }}</div>
-                                            <div class="text-sm text-gray-400 mt-2">Արտոնված</div>
+                                            <div class="text-sm text-gray-400 mt-2">{{ t('excused') }}</div>
                                         </div>
                                     </div>
 
                                     <!-- Attendance Percentage -->
                                     <div class="mb-4">
                                         <div class="flex items-center justify-between text-sm mb-2">
-                                            <span class="text-gray-400 font-medium">Հաճախելիություն</span>
+                                            <span class="text-gray-400 font-medium">{{ t('attendance_percentage') }}</span>
                                             <span class="font-bold text-xl" :class="group.attendance_percentage >= 80 ? 'text-green-400' : group.attendance_percentage >= 60 ? 'text-yellow-400' : 'text-red-400'">
                                                 {{ group.attendance_percentage }}%
                                             </span>
@@ -684,7 +917,7 @@ watch(() => props.students, (newStudents) => {
 
                                 <!-- Monthly Attendance -->
                                 <div v-if="group.recent_attendance && group.recent_attendance.length > 0" class="pt-4 border-t border-[#4D4C4C]">
-                                    <div class="text-sm font-semibold text-gray-400 mb-3">Ամսվա ներկայություն</div>
+                                    <div class="text-sm font-semibold text-gray-400 mb-3">{{ t('monthly_attendance') }}</div>
                                     <div class="flex flex-wrap gap-2">
                                         <div
                                             v-for="attendance in group.recent_attendance"
@@ -699,18 +932,18 @@ watch(() => props.students, (newStudents) => {
                                         >
                                             <div class="font-semibold">{{ attendance.date_human }}</div>
                                             <div class="text-xs mt-0.5">
-                                                {{ attendance.status === 'present' ? 'Ներկա' : attendance.status === 'absent' ? 'Բացակա' : 'Արտոնված' }}
+                                                {{ attendance.status === 'present' ? t('present') : attendance.status === 'absent' ? t('absent') : t('excused') }}
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                                 <div v-else class="pt-4 border-t border-[#4D4C4C] text-center text-gray-400 text-sm">
-                                    No attendance records for this month.
+                                    {{ t('no_attendance_records') }}
                                 </div>
                                 </div>
                             </div>
                             <div v-else class="text-center py-8 text-gray-400">
-                                <p>No groups assigned to this student.</p>
+                                <p>{{ t('no_groups_assigned_student') }}</p>
                             </div>
                         </div>
                     </div>
@@ -740,9 +973,11 @@ watch(() => props.students, (newStudents) => {
                                 <input
                                     v-model="studentForm.name"
                                     type="text"
+                                    @input="filterArmenianStudentName"
+                                    @paste="filterArmenianStudentName"
                                     required
                                     class="w-full rounded-md bg-[#5D5D5D] border border-[#4D4C4C] text-white shadow-sm focus:border-[#F15A2B] focus:ring-[#F15A2B] px-3 py-2"
-                                    placeholder="Enter student name"
+                                    :placeholder="t('enter_student_name')"
                                 />
                                 <div v-if="studentForm.errors.name" class="mt-1 text-sm text-red-400">
                                     {{ studentForm.errors.name }}
@@ -751,13 +986,13 @@ watch(() => props.students, (newStudents) => {
 
                             <div>
                                 <label class="block text-sm font-medium text-[#C7C7C7] mb-2">
-                                    Biradi (ID Number)
+                                    {{ t('biradi_id_number') }}
                                 </label>
                                 <input
                                     v-model="studentForm.biradi"
                                     type="text"
                                     class="w-full rounded-md bg-[#5D5D5D] border border-[#4D4C4C] text-white shadow-sm focus:border-[#F15A2B] focus:ring-[#F15A2B] px-3 py-2"
-                                    placeholder="Enter biradi (passport number)"
+                                    :placeholder="t('enter_biradi')"
                                 />
                                 <div v-if="studentForm.errors.biradi" class="mt-1 text-sm text-red-400">
                                     {{ studentForm.errors.biradi }}
@@ -774,7 +1009,7 @@ watch(() => props.students, (newStudents) => {
                                     required
                                     class="w-full rounded-md bg-[#5D5D5D] border border-[#4D4C4C] text-white shadow-sm focus:border-[#F15A2B] focus:ring-[#F15A2B] px-3 py-2"
                                 >
-                                    <option value="">{{ t('select_a_branch') || 'Select a course' }}</option>
+                                    <option value="">{{ t('select_course') }}</option>
                                     <option
                                         v-for="course in courses"
                                         :key="course.id"
@@ -814,13 +1049,17 @@ watch(() => props.students, (newStudents) => {
 
                             <div>
                                 <label class="block text-sm font-medium text-[#C7C7C7] mb-2">
-                                    {{ t('student_birthday') }}
+                                    {{ t('student_birthday') }} *
                                 </label>
                                 <input
                                     v-model="studentForm.birthday"
                                     type="date"
+                                    required
                                     class="w-full rounded-md bg-[#5D5D5D] border border-[#4D4C4C] text-white shadow-sm focus:border-[#F15A2B] focus:ring-[#F15A2B] px-3 py-2"
                                 />
+                                <div v-if="studentForm.errors.birthday" class="mt-1 text-sm text-red-400">
+                                    {{ studentForm.errors.birthday }}
+                                </div>
                             </div>
 
                             <div class="flex justify-end gap-3 pt-4">
@@ -833,8 +1072,8 @@ watch(() => props.students, (newStudents) => {
                                 </button>
                                 <button
                                     type="submit"
-                                    :disabled="studentForm.processing"
-                                    class="px-4 py-2 bg-[#F15A2B] text-white rounded-lg hover:bg-[#BF3206] disabled:opacity-50 transition-colors"
+                                    :disabled="studentForm.processing || !isStudentFormValid"
+                                    class="px-4 py-2 bg-[#F15A2B] text-white rounded-lg hover:bg-[#BF3206] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                 >
                                     {{ studentForm.processing ? (t('sending') || 'Saving...') : (editingStudent ? (t('update') || 'Update') : (t('create') || 'Create')) }}
                                 </button>

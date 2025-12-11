@@ -24,7 +24,7 @@ const form = useForm({
     <section>
         <form @submit.prevent="form.patch(route('profile.update'))" class="space-y-6">
             <div>
-                <InputLabel for="name" :value="t('full_name')" class="text-[#C7C7C7]" />
+                <InputLabel for="name" :value="t('full_name')" class="text-white" />
 
                 <input
                     id="name"
@@ -40,7 +40,7 @@ const form = useForm({
             </div>
 
             <div>
-                <InputLabel for="email" :value="t('email')" class="text-[#C7C7C7]" />
+                <InputLabel for="email" :value="t('email')" class="text-white" />
 
                 <input
                     id="email"

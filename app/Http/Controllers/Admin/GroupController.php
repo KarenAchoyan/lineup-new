@@ -107,15 +107,9 @@ class GroupController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name_en' => 'required|string|max:255',
-            'name_hy' => 'required|string|max:255',
-            'name_ge' => 'required|string|max:255',
-            'name_ru' => 'required|string|max:255',
+            'name' => 'required|string|max:255',
             'course_id' => 'required|exists:courses,id',
-            'description_en' => 'nullable|string',
-            'description_hy' => 'nullable|string',
-            'description_ge' => 'nullable|string',
-            'description_ru' => 'nullable|string',
+            'description' => 'nullable|string',
             'order' => 'nullable|integer',
             'is_active' => 'boolean',
             'students' => 'nullable|array',
@@ -123,7 +117,19 @@ class GroupController extends Controller
         ]);
 
         $students = $validated['students'] ?? [];
-        unset($validated['students']);
+        $name = $validated['name'];
+        $description = $validated['description'] ?? null;
+        unset($validated['students'], $validated['name'], $validated['description']);
+
+        // Set the same name and description for all languages
+        $validated['name_en'] = $name;
+        $validated['name_hy'] = $name;
+        $validated['name_ge'] = $name;
+        $validated['name_ru'] = $name;
+        $validated['description_en'] = $description;
+        $validated['description_hy'] = $description;
+        $validated['description_ge'] = $description;
+        $validated['description_ru'] = $description;
 
         $group = Group::create($validated);
         $group->students()->sync($students);
@@ -182,15 +188,9 @@ class GroupController extends Controller
     public function update(Request $request, Group $group)
     {
         $validated = $request->validate([
-            'name_en' => 'required|string|max:255',
-            'name_hy' => 'required|string|max:255',
-            'name_ge' => 'required|string|max:255',
-            'name_ru' => 'required|string|max:255',
+            'name' => 'required|string|max:255',
             'course_id' => 'required|exists:courses,id',
-            'description_en' => 'nullable|string',
-            'description_hy' => 'nullable|string',
-            'description_ge' => 'nullable|string',
-            'description_ru' => 'nullable|string',
+            'description' => 'nullable|string',
             'order' => 'nullable|integer',
             'is_active' => 'boolean',
             'students' => 'nullable|array',
@@ -198,7 +198,19 @@ class GroupController extends Controller
         ]);
 
         $students = $validated['students'] ?? [];
-        unset($validated['students']);
+        $name = $validated['name'];
+        $description = $validated['description'] ?? null;
+        unset($validated['students'], $validated['name'], $validated['description']);
+
+        // Set the same name and description for all languages
+        $validated['name_en'] = $name;
+        $validated['name_hy'] = $name;
+        $validated['name_ge'] = $name;
+        $validated['name_ru'] = $name;
+        $validated['description_en'] = $description;
+        $validated['description_hy'] = $description;
+        $validated['description_ge'] = $description;
+        $validated['description_ru'] = $description;
 
         $group->update($validated);
         $group->students()->sync($students);
@@ -298,6 +310,12 @@ class GroupController extends Controller
                 ->whereMonth('paid_at', Carbon::now()->month)
                 ->exists();
 
+            // Check if student has any additional payments
+            $hasAdditionalPayment = Payment::where('student_id', $student->id)
+                ->where('payment_category', 'additional')
+                ->where('status', 'success')
+                ->exists();
+
             return [
                 'id' => $student->id,
                 'name' => $student->name,
@@ -310,6 +328,7 @@ class GroupController extends Controller
                 'course_name' => $student->course->getName($locale),
                 'branch_name' => $student->branch->getName($locale),
                 'has_paid_this_month' => $hasPaidThisMonth,
+                'has_additional_payment' => $hasAdditionalPayment,
             ];
         });
 

@@ -85,15 +85,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Payment routes
     Route::get('/profile/payments/{student}', [PaymentController::class, 'history'])->name('profile.payments.history');
     Route::post('/profile/payments/{student}/create', [PaymentController::class, 'createCheckout'])->name('profile.payments.create');
+    Route::post('/profile/payments/check-status', [PaymentController::class, 'checkStatus'])->name('profile.payments.check-status');
 
     // Admin Routes
     Route::prefix('admin')->name('admin.')->middleware(['admin', 'verified'])->group(function () {
         Route::resource('archive', AdminArchiveController::class)->except(['update']);
         Route::post('archive/{archive}', [AdminArchiveController::class, 'update'])->name('archive.update');
         Route::resource('branches', \App\Http\Controllers\Admin\BranchController::class);
-        Route::resource('courses', \App\Http\Controllers\Admin\CourseController::class);
+        Route::resource('courses', \App\Http\Controllers\Admin\CourseController::class)->except(['update']);
+        Route::post('courses/{course}', [\App\Http\Controllers\Admin\CourseController::class, 'update'])->name('courses.update');
         Route::get('about/edit', [\App\Http\Controllers\Admin\AboutController::class, 'edit'])->name('about.edit');
         Route::post('about', [\App\Http\Controllers\Admin\AboutController::class, 'update'])->name('about.update');
+        Route::get('privacy/edit', [\App\Http\Controllers\Admin\PrivacyController::class, 'edit'])->name('privacy.edit');
+        Route::post('privacy', [\App\Http\Controllers\Admin\PrivacyController::class, 'update'])->name('privacy.update');
         Route::get('banner/edit', [\App\Http\Controllers\Admin\BannerController::class, 'edit'])->name('banner.edit');
         Route::post('banner', [\App\Http\Controllers\Admin\BannerController::class, 'update'])->name('banner.update');
         Route::resource('staff', \App\Http\Controllers\Admin\StaffController::class)->except(['update']);
@@ -107,6 +111,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('galleries', \App\Http\Controllers\Admin\GalleryController::class);
         Route::resource('active-users', \App\Http\Controllers\Admin\ActiveUserController::class);
         Route::get('users', [\App\Http\Controllers\Admin\UserController::class, 'index'])->name('users.index');
+        Route::delete('users/{user}', [\App\Http\Controllers\Admin\UserController::class, 'destroy'])->name('users.destroy');
+        Route::post('users/{user}/update-password', [\App\Http\Controllers\Admin\UserController::class, 'updatePassword'])->name('users.update-password');
         Route::get('users/students/{student}/groups', [\App\Http\Controllers\Admin\UserController::class, 'getStudentGroups'])->name('users.students.groups');
         Route::post('users/students/{student}/groups', [\App\Http\Controllers\Admin\UserController::class, 'updateStudentGroups'])->name('users.students.groups.update');
         Route::post('users/{user}/assign-teacher-role', [\App\Http\Controllers\Admin\UserController::class, 'assignTeacherRole'])->name('users.assign-teacher-role');

@@ -39,7 +39,7 @@ const updatePassword = () => {
     <section>
         <form @submit.prevent="updatePassword" class="space-y-6">
             <div>
-                <InputLabel for="current_password" :value="t('current_password') || 'Current Password'" class="text-[#C7C7C7]" />
+                <InputLabel for="current_password" :value="t('current_password') || 'Current Password'" class="text-white" />
 
                 <input
                     id="current_password"
@@ -54,7 +54,7 @@ const updatePassword = () => {
             </div>
 
             <div>
-                <InputLabel for="password" :value="t('new_password') || 'New Password'" class="text-[#C7C7C7]" />
+                <InputLabel for="password" :value="t('new_password') || 'New Password'" class="text-white" />
 
                 <input
                     id="password"
@@ -69,7 +69,7 @@ const updatePassword = () => {
             </div>
 
             <div>
-                <InputLabel for="password_confirmation" :value="t('confirm_password')" class="text-[#C7C7C7]" />
+                <InputLabel for="password_confirmation" :value="t('confirm_password')" class="text-white" />
 
                 <input
                     id="password_confirmation"

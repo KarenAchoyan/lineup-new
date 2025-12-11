@@ -44,7 +44,7 @@ class EventController extends Controller
         }
 
         if ($request->hasFile('avatar')) {
-            $validated['avatar'] = 'public/' . $request->file('avatar')->store('events', 'public');
+            $validated['avatar'] = 'app/public/' . $request->file('avatar')->store('events', 'public');
         }
 
         Event::create($validated);
@@ -81,10 +81,10 @@ class EventController extends Controller
         // Only update avatar if a new file is uploaded
         if ($request->hasFile('avatar')) {
             if ($event->avatar) {
-                $imagePath = str_replace('public/', '', $event->avatar);
+                $imagePath = str_replace('app/public/', '', $event->avatar);
                 Storage::disk('public')->delete($imagePath);
             }
-            $validated['avatar'] = 'public/' . $request->file('avatar')->store('events', 'public');
+            $validated['avatar'] = 'app/public/' . $request->file('avatar')->store('events', 'public');
         } else {
             // Remove avatar from validated array to preserve existing avatar
             unset($validated['avatar']);
@@ -99,7 +99,7 @@ class EventController extends Controller
     public function destroy(Event $event)
     {
         if ($event->avatar) {
-            $imagePath = str_replace('public/', '', $event->avatar);
+            $imagePath = str_replace('app/public/', '', $event->avatar);
             Storage::disk('public')->delete($imagePath);
         }
 

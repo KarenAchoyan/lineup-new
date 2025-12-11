@@ -292,7 +292,7 @@ class PaymentHistoryController extends Controller
             if ($studentGroups->isEmpty()) {
                 $hasPaid = Payment::where('student_id', $student->id)
                     ->whereNull('group_id')
-                    ->where('status', 'success')
+                    ->whereIn('status', ['success', 'pending'])
                     ->whereYear('paid_at', $currentYear)
                     ->whereMonth('paid_at', $currentMonth)
                     ->exists();
@@ -303,7 +303,7 @@ class PaymentHistoryController extends Controller
         })->map(function ($student) use ($locale) {
             // Get last payment (any month)
             $lastPayment = Payment::where('student_id', $student->id)
-                ->where('status', 'success')
+                ->whereIn('status', ['success', 'pending'])
                 ->whereNotNull('paid_at')
                 ->orderBy('paid_at', 'desc')
                 ->first();

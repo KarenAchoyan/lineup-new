@@ -42,9 +42,9 @@ const closeModal = () => {
 <template>
     <section class="space-y-6">
         <header>
-            <h2 class="text-lg font-medium text-[#C7C7C7]">{{ t('delete_account') || 'Delete Account' }}</h2>
+            <h2 class="text-lg font-medium text-white">{{ t('delete_account') || 'Delete Account' }}</h2>
 
-            <p class="mt-1 text-sm text-[#C7C7C7]">
+            <p class="mt-1 text-sm text-white">
                 {{ t('delete_account_warning') || 'Once your account is deleted, all of its resources and data will be permanently deleted. Before deleting your account, please download any data or information that you wish to retain.' }}
             </p>
         </header>
@@ -58,11 +58,11 @@ const closeModal = () => {
 
         <Modal :show="confirmingUserDeletion" @close="closeModal">
             <div class="p-6 bg-gradient-to-br from-[#4D4C4C] to-[#3a3a3a]">
-                <h2 class="text-lg font-medium text-[#C7C7C7]">
-                    {{ t('are_you_sure_you_want_to_log_out') || 'Are you sure you want to delete your account?' }}
+                <h2 class="text-lg font-medium text-white">
+                    {{ t('are_you_sure_delete_account') || 'Are you sure you want to delete your account?' }}
                 </h2>
 
-                <p class="mt-1 text-sm text-[#C7C7C7]">
+                <p class="mt-1 text-sm text-white">
                     {{ t('delete_account_confirmation') || 'Once your account is deleted, all of its resources and data will be permanently deleted. Please enter your password to confirm you would like to permanently delete your account.' }}
                 </p>
 

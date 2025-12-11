@@ -37,7 +37,7 @@ class RedirectIfAuthenticated
                 }
                 
                 if ($user->hasRole('teacher')) {
-                    return redirect(route('teacher.groups.index'));
+                    return redirect(route('dashboard'));
                 }
                 
                 return redirect(route('profile.edit'));

@@ -42,7 +42,8 @@ class UserController extends Controller
         if (!empty($search)) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%");
             });
         }
 
@@ -116,6 +117,9 @@ class UserController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'phone' => $user->phone,
+                'email_verified_at' => $user->email_verified_at?->format('Y-m-d H:i:s'),
+                'is_verified' => $user->hasVerifiedEmail(),
                 'created_at' => $user->created_at->format('Y-m-d H:i:s'),
                 'is_teacher' => $user->isTeacher(),
                 'students' => $filteredStudents->map(function ($student) use ($locale) {
@@ -289,6 +293,43 @@ class UserController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Teacher role removed successfully.',
+        ]);
+    }
+
+    /**
+     * Delete a user.
+     */
+    public function destroy(User $user)
+    {
+        // Prevent deleting admin users
+        if ($user->isAdmin()) {
+            return redirect()->route('admin.users.index')
+                ->with('error', 'Cannot delete admin user.');
+        }
+
+        // Delete user (cascade will handle students, payments, etc.)
+        $user->delete();
+
+        return redirect()->route('admin.users.index')
+            ->with('success', 'User deleted successfully.');
+    }
+
+    /**
+     * Update user's password (admin only).
+     */
+    public function updatePassword(Request $request, User $user)
+    {
+        $validated = $request->validate([
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $user->update([
+            'password' => \Illuminate\Support\Facades\Hash::make($validated['password']),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password updated successfully.',
         ]);
     }
 }

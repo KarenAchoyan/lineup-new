@@ -360,10 +360,24 @@
                                             <button
                                                 @click="openCashPaymentModal(student)"
                                                 class="inline-flex items-center px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded transition-colors"
-                                                title="Add Cash Payment"
+                                                title="Ավելացնել կանխիկ վճարում"
                                             >
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                                </svg>
+                                            </button>
+                                            <button
+                                                @click="openAdditionalPaymentModal(student)"
+                                                :class="[
+                                                    'inline-flex items-center px-2 py-1 text-white text-xs font-semibold rounded transition-colors',
+                                                    student.has_additional_payment 
+                                                        ? 'bg-green-600 hover:bg-green-700' 
+                                                        : 'bg-red-600 hover:bg-red-700'
+                                                ]"
+                                                :title="student.has_additional_payment ? 'Կողմնակի վճարում կա' : 'Կողմնակի վճարում չկա'"
+                                            >
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                 </svg>
                                             </button>
                                         </div>
@@ -498,6 +512,110 @@
                             Փակել
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Additional Payment Modal -->
+        <div v-if="showAdditionalPaymentModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" @click.self="closeAdditionalPaymentModal">
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <div class="mt-3">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-900">Ավելացնել կողմնակի վճարում</h3>
+                        <button @click="closeAdditionalPaymentModal" class="text-gray-400 hover:text-gray-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <form @submit.prevent="submitAdditionalPayment">
+                        <!-- Student Info (read-only) -->
+                        <div class="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-md">
+                            <div class="text-sm font-semibold text-gray-900">{{ selectedStudentForAdditionalPayment?.name }}</div>
+                            <div class="text-xs text-gray-600 mt-1">
+                                Ծնող: {{ selectedStudentForAdditionalPayment?.user_name }} ({{ selectedStudentForAdditionalPayment?.user_email }})
+                            </div>
+                            <div class="text-xs text-gray-500 mt-1">
+                                {{ selectedStudentForAdditionalPayment?.course_name }} - {{ selectedStudentForAdditionalPayment?.branch_name }}
+                            </div>
+                        </div>
+
+                        <!-- Amount -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Գումար *</label>
+                            <input
+                                v-model.number="additionalPaymentForm.amount"
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                required
+                                placeholder="30.00"
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            />
+                        </div>
+
+                        <!-- Currency -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Արժույթ</label>
+                            <select
+                                v-model="additionalPaymentForm.currency"
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            >
+                                <option value="GEL">GEL</option>
+                                <option value="USD">USD</option>
+                                <option value="EUR">EUR</option>
+                            </select>
+                        </div>
+
+                        <!-- Description/Comment -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Մեկնաբանություն *</label>
+                            <textarea
+                                v-model="additionalPaymentForm.order_desc"
+                                rows="4"
+                                required
+                                placeholder="Նշեք, թե ինչի համար է վճարումը..."
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            ></textarea>
+                        </div>
+
+                        <!-- Payment Date -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Վճարման ամսաթիվ</label>
+                            <input
+                                v-model="additionalPaymentForm.paid_at"
+                                type="datetime-local"
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            />
+                        </div>
+
+                        <!-- Error Messages -->
+                        <div v-if="additionalPaymentForm.errors" class="mb-4 text-sm text-red-600">
+                            <div v-for="(error, key) in additionalPaymentForm.errors" :key="key">
+                                {{ error }}
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="flex justify-end gap-3">
+                            <button
+                                type="button"
+                                @click="closeAdditionalPaymentModal"
+                                class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                            >
+                                Չեղարկել
+                            </button>
+                            <button
+                                type="submit"
+                                :disabled="additionalPaymentForm.processing"
+                                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                            >
+                                <span v-if="additionalPaymentForm.processing">Պահպանվում է...</span>
+                                <span v-else>Պահպանել</span>
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -688,6 +806,17 @@ const cashPaymentForm = useForm({
     order_desc: '',
 });
 
+// Additional Payment Modal
+const showAdditionalPaymentModal = ref(false);
+const selectedStudentForAdditionalPayment = ref(null);
+const additionalPaymentForm = useForm({
+    student_id: '',
+    amount: 30,
+    currency: 'GEL',
+    order_desc: '',
+    paid_at: new Date().toISOString().slice(0, 16),
+});
+
 const viewClass = async (groupId) => {
     try {
         // Load all students without filters (we'll filter client-side)
@@ -754,6 +883,43 @@ const submitCashPayment = () => {
         preserveScroll: true,
         onSuccess: () => {
             closeCashPaymentModal();
+            // Reload the group students to update payment status
+            if (selectedGroup.value) {
+                viewClass(selectedGroup.value.id);
+            }
+        },
+    });
+};
+
+// Additional Payment Functions
+const openAdditionalPaymentModal = (student) => {
+    selectedStudentForAdditionalPayment.value = student;
+    additionalPaymentForm.student_id = student.id;
+    additionalPaymentForm.amount = 30;
+    additionalPaymentForm.currency = 'GEL';
+    additionalPaymentForm.paid_at = new Date().toISOString().slice(0, 16);
+    additionalPaymentForm.order_desc = '';
+    additionalPaymentForm.clearErrors();
+    showAdditionalPaymentModal.value = true;
+};
+
+const closeAdditionalPaymentModal = () => {
+    showAdditionalPaymentModal.value = false;
+    selectedStudentForAdditionalPayment.value = null;
+    additionalPaymentForm.reset();
+    additionalPaymentForm.clearErrors();
+};
+
+const submitAdditionalPayment = () => {
+    if (!additionalPaymentForm.student_id) {
+        additionalPaymentForm.setError('student_id', 'Խնդրում ենք ընտրել աշակերտ');
+        return;
+    }
+    
+    additionalPaymentForm.post(route('admin.additional-payments.store'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            closeAdditionalPaymentModal();
             // Reload the group students to update payment status
             if (selectedGroup.value) {
                 viewClass(selectedGroup.value.id);

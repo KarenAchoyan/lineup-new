@@ -11,7 +11,7 @@
             
             <div class="container mx-auto px-3 sm:px-4 relative z-10">
                 <!-- Course Title -->
-                <h1 class="text-[24px] sm:text-[32px] md:text-[45px] lg:text-[55px] font-bold text-[#C7C7C7] text-center mb-6 sm:mb-8 md:mb-12">
+                <h1 class="text-[24px] sm:text-[32px] md:text-[45px] lg:text-[55px] font-bold text-[#C7C7C7] text-center mb-6 sm:mb-8 md:mb-12 mt-[100px]">
                     {{ course.name }}
                 </h1>
 

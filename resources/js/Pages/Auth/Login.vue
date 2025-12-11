@@ -56,7 +56,7 @@ const submit = () => {
                 <div class="bg-[#4D4C4C] backdrop-blur-sm rounded-2xl border-t-2 border-[#BF3206] shadow-2xl p-8 md:p-10">
                     <form class="space-y-6" @submit.prevent="submit">
                         <div>
-                            <InputLabel for="email" :value="t('email')" class="text-[#C7C7C7]" />
+                            <InputLabel for="email" :value="t('email')" class="text-white" />
                             <TextInput
                                 id="email"
                                 type="email"
@@ -71,7 +71,7 @@ const submit = () => {
                         </div>
 
                         <div>
-                            <InputLabel for="password" :value="t('password')" class="text-[#C7C7C7]" />
+                            <InputLabel for="password" :value="t('password')" class="text-white" />
                             <TextInput
                                 id="password"
                                 type="password"

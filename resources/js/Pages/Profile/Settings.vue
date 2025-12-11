@@ -24,7 +24,7 @@ const { t } = useTranslation();
                 <h1 class="text-[32px] md:text-[45px] font-bold text-[#C7C7C7] mb-2">
                     {{ t('settings') || 'Settings' }}
                 </h1>
-                <p class="text-gray-400">Manage your account settings and preferences</p>
+                <p class="text-gray-400">{{ t('manage_account_settings') || 'Manage your account settings and preferences' }}</p>
             </div>
 
             <!-- Back to Profile Link -->
@@ -36,7 +36,7 @@ const { t } = useTranslation();
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                     </svg>
-                    <span>Back to Profile</span>
+                    <span>{{ t('back_to_profile') || 'Back to Profile' }}</span>
                 </Link>
             </div>
 
@@ -60,7 +60,7 @@ const { t } = useTranslation();
                     <svg class="w-6 h-6 text-[#F15A2B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
-                    {{ t('settings') || 'Settings' }}
+                    {{ t('update_password') || 'Update Password' }}
                 </h2>
                 <UpdatePasswordForm />
             </div>
@@ -71,7 +71,7 @@ const { t } = useTranslation();
                     <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
-                    Delete Account
+                    {{ t('delete_account') || 'Delete Account' }}
                 </h2>
                 <DeleteUserForm />
             </div>

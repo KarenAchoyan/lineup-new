@@ -15,14 +15,39 @@ class VerifyEmailController extends Controller
      */
     public function __invoke(EmailVerificationRequest $request): RedirectResponse
     {
-        if ($request->user()->hasVerifiedEmail()) {
-            return redirect()->intended(RouteServiceProvider::HOME.'?verified=1');
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+        
+        if ($user->hasVerifiedEmail()) {
+            return $this->redirectBasedOnRole($user);
         }
 
-        if ($request->user()->markEmailAsVerified()) {
-            event(new Verified($request->user()));
+        if ($user->markEmailAsVerified()) {
+            event(new Verified($user));
         }
 
-        return redirect()->intended(RouteServiceProvider::HOME.'?verified=1');
+        return $this->redirectBasedOnRole($user);
+    }
+
+    /**
+     * Redirect user based on their role.
+     */
+    private function redirectBasedOnRole($user): RedirectResponse
+    {
+        // Load roles relationship
+        if (!$user->relationLoaded('roles')) {
+            $user->load('roles');
+        }
+
+        // Redirect based on role
+        if ($user->hasRole('admin')) {
+            return redirect()->intended(route('dashboard').'?verified=1');
+        }
+        
+        if ($user->hasRole('teacher')) {
+            return redirect()->intended(route('dashboard').'?verified=1');
+        }
+
+        return redirect()->intended(route('profile.edit').'?verified=1');
     }
 }

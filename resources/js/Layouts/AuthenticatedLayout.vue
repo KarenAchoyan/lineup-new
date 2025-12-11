@@ -228,6 +228,21 @@ const isActive = (routeName) => {
                         </Link>
 
                         <Link 
+                            :href="route('admin.privacy.edit')" 
+                            :class="[
+                                'flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200',
+                                isActive('admin.privacy.*') 
+                                    ? 'bg-gradient-to-r from-purple-500 to-purple-700 text-white shadow-lg' 
+                                    : 'text-white/80 hover:bg-white/10 hover:text-white'
+                            ]"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            <span class="font-medium">Գաղտնիության քաղաքականություն</span>
+                        </Link>
+
+                        <Link 
                             :href="route('admin.banner.edit')" 
                             :class="[
                                 'flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200',

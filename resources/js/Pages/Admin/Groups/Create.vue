@@ -9,42 +9,15 @@
                         <h2 class="text-2xl font-bold text-gray-900 mb-6">Create Group</h2>
 
                         <form @submit.prevent="submit">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div class="mb-6">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Name (English) *</label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Անուն *</label>
                                     <input
                                         type="text"
-                                        v-model="form.name_en"
+                                        v-model="form.name"
                                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#F15A2B] focus:ring-[#F15A2B]"
                                     />
-                                    <div v-if="form.errors.name_en" class="mt-1 text-sm text-red-600">{{ form.errors.name_en }}</div>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Name (Armenian) *</label>
-                                    <input
-                                        type="text"
-                                        v-model="form.name_hy"
-                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#F15A2B] focus:ring-[#F15A2B]"
-                                    />
-                                    <div v-if="form.errors.name_hy" class="mt-1 text-sm text-red-600">{{ form.errors.name_hy }}</div>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Name (Georgian) *</label>
-                                    <input
-                                        type="text"
-                                        v-model="form.name_ge"
-                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#F15A2B] focus:ring-[#F15A2B]"
-                                    />
-                                    <div v-if="form.errors.name_ge" class="mt-1 text-sm text-red-600">{{ form.errors.name_ge }}</div>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Name (Russian) *</label>
-                                    <input
-                                        type="text"
-                                        v-model="form.name_ru"
-                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#F15A2B] focus:ring-[#F15A2B]"
-                                    />
-                                    <div v-if="form.errors.name_ru" class="mt-1 text-sm text-red-600">{{ form.errors.name_ru }}</div>
+                                    <div v-if="form.errors.name" class="mt-1 text-sm text-red-600">{{ form.errors.name }}</div>
                                 </div>
                             </div>
 
@@ -62,35 +35,11 @@
                                 <div v-if="form.errors.course_id" class="mt-1 text-sm text-red-600">{{ form.errors.course_id }}</div>
                             </div>
 
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div class="mb-6">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Description (English)</label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Նկարագրություն</label>
                                     <textarea
-                                        v-model="form.description_en"
-                                        rows="4"
-                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#F15A2B] focus:ring-[#F15A2B]"
-                                    ></textarea>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Description (Armenian)</label>
-                                    <textarea
-                                        v-model="form.description_hy"
-                                        rows="4"
-                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#F15A2B] focus:ring-[#F15A2B]"
-                                    ></textarea>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Description (Georgian)</label>
-                                    <textarea
-                                        v-model="form.description_ge"
-                                        rows="4"
-                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#F15A2B] focus:ring-[#F15A2B]"
-                                    ></textarea>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Description (Russian)</label>
-                                    <textarea
-                                        v-model="form.description_ru"
+                                        v-model="form.description"
                                         rows="4"
                                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#F15A2B] focus:ring-[#F15A2B]"
                                     ></textarea>
@@ -221,15 +170,9 @@ const props = defineProps({
 });
 
 const form = useForm({
-    name_en: '',
-    name_hy: '',
-    name_ge: '',
-    name_ru: '',
+    name: '',
     course_id: '',
-    description_en: '',
-    description_hy: '',
-    description_ge: '',
-    description_ru: '',
+    description: '',
     order: 0,
     is_active: true,
     students: [],

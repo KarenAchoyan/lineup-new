@@ -32,14 +32,43 @@ class RegisteredUserController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:'.User::class,
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                'regex:/^[\x{0531}-\x{0556}\x{0561}-\x{0587}\s]+$/u', // Only Armenian letters and spaces
+            ],
+            'email' => [
+                'required',
+                'string',
+                'email',
+                'max:255',
+                'unique:'.User::class,
+                'regex:/^[a-zA-Z0-9._%+\-@]+$/', // Only Latin letters, numbers, and email special chars
+            ],
+            'phone' => [
+                'nullable',
+                'string',
+                'max:20',
+                'regex:/^(\+995[0-9]{9}|5[0-9]{8})$/', // Georgian phone: +995XXXXXXXXX or 5XXXXXXXX
+            ],
+            'password' => [
+                'required',
+                'confirmed',
+                Rules\Password::defaults(),
+                'regex:/^[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};\':"\\|,.<>\/?]+$/', // Only Latin letters, numbers, and special chars
+            ],
+        ], [
+            'name.regex' => 'Անունը պետք է պարունակի միայն հայատառ տառեր:',
+            'phone.regex' => 'Հեռախոսահամարը պետք է լինի վրացական ֆորմատով: +995XXXXXXXXX կամ 5XXXXXXXX',
+            'email.regex' => 'Email-ը չպետք է պարունակի հայերեն նիշեր:',
+            'password.regex' => 'Գաղտնաբառը չպետք է պարունակի հայերեն նիշեր:',
         ]);
 
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
+            'phone' => $request->phone,
             'password' => Hash::make($request->password),
         ]);
 

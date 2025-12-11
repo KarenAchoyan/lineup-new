@@ -16,6 +16,9 @@
                         <div v-if="$page.props.flash?.success" class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
                             {{ $page.props.flash.success }}
                         </div>
+                        <div v-if="$page.props.flash?.error" class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+                            {{ $page.props.flash.error }}
+                        </div>
 
                         <!-- Filters Section -->
                         <div class="mb-6 bg-gray-50 rounded-lg p-4 border border-gray-200">
@@ -36,7 +39,7 @@
                                     <input
                                         v-model="filters.search"
                                         type="text"
-                                        placeholder="Անուն կամ Email..."
+                                        placeholder="Անուն, Email կամ Հեռախոսահամար..."
                                         class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                     />
                                 </div>
@@ -166,37 +169,75 @@
                                             >
                                                 Ուսուցիչ
                                             </span>
+                                            <span
+                                                v-if="!user.is_verified"
+                                                class="px-2 py-1 bg-red-100 text-red-800 text-xs font-semibold rounded-full"
+                                                title="Email-ը դեռ հաստատված չէ"
+                                            >
+                                                Չհաստատված
+                                            </span>
+                                            <span
+                                                v-else
+                                                class="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full"
+                                                title="Email-ը հաստատված է"
+                                            >
+                                                Հաստատված
+                                            </span>
                                         </div>
                                         <p class="text-sm text-gray-600">{{ user.email }}</p>
-                                        <p class="text-xs text-gray-500 mt-1">Գրանցված: {{ user.created_at }}</p>
+                                        <p v-if="user.phone" class="text-sm text-gray-600">{{ user.phone }}</p>
+                                        <p class="text-xs text-gray-500 mt-1">
+                                            Գրանցված: {{ user.created_at }}
+                                            <span v-if="user.is_verified" class="ml-2">
+                                                | Հաստատված: {{ user.email_verified_at }}
+                                            </span>
+                                        </p>
                                     </div>
                                     <div class="flex flex-col items-end gap-2">
                                         <span class="px-3 py-1 bg-blue-100 text-blue-800 text-sm font-semibold rounded-full">
                                             {{ user.students.length }} {{ user.students.length === 1 ? 'Աշակերտ' : 'Աշակերտ' }}
                                         </span>
-                                        <button
-                                            v-if="!user.is_teacher && user.students.length === 0"
-                                            @click="assignTeacherRole(user)"
-                                            :disabled="processingUser === user.id"
-                                            class="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:opacity-50 transition-colors"
-                                        >
-                                            {{ processingUser === user.id ? 'Մշակվում է...' : 'Նշանակել որպես ուսուցիչ' }}
-                                        </button>
-                                        <button
-                                            v-else-if="user.is_teacher"
-                                            @click="removeTeacherRole(user)"
-                                            :disabled="processingUser === user.id"
-                                            class="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 disabled:opacity-50 transition-colors"
-                                        >
-                                            {{ processingUser === user.id ? 'Մշակվում է...' : 'Հեռացնել ուսուցչի դերը' }}
-                                        </button>
-                                        <span
-                                            v-else-if="user.students.length > 0"
-                                            class="px-3 py-1 bg-gray-200 text-gray-600 text-xs rounded cursor-not-allowed"
-                                            title="Չի կարելի նշանակել ուսուցչի դեր օգտատերերին, որոնք ունեն աշակերտներ"
-                                        >
-                                            Ունի աշակերտներ
-                                        </span>
+                                        <div class="flex gap-2">
+                                            <button
+                                                v-if="!user.is_teacher && user.students.length === 0"
+                                                @click="assignTeacherRole(user)"
+                                                :disabled="processingUser === user.id"
+                                                class="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:opacity-50 transition-colors"
+                                            >
+                                                {{ processingUser === user.id ? 'Մշակվում է...' : 'Նշանակել որպես ուսուցիչ' }}
+                                            </button>
+                                            <button
+                                                v-else-if="user.is_teacher"
+                                                @click="removeTeacherRole(user)"
+                                                :disabled="processingUser === user.id"
+                                                class="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 disabled:opacity-50 transition-colors"
+                                            >
+                                                {{ processingUser === user.id ? 'Մշակվում է...' : 'Հեռացնել ուսուցչի դերը' }}
+                                            </button>
+                                            <span
+                                                v-else-if="user.students.length > 0"
+                                                class="px-3 py-1 bg-gray-200 text-gray-600 text-xs rounded cursor-not-allowed"
+                                                title="Չի կարելի նշանակել ուսուցչի դեր օգտատերերին, որոնք ունեն աշակերտներ"
+                                            >
+                                                Ունի աշակերտներ
+                                            </span>
+                                            <button
+                                                @click="openChangePasswordModal(user)"
+                                                class="px-3 py-1 bg-purple-600 text-white text-sm rounded hover:bg-purple-700 transition-colors"
+                                                title="Փոխել գաղտնաբառը"
+                                            >
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                                                </svg>
+                                            </button>
+                                            <button
+                                                @click="deleteUser(user)"
+                                                :disabled="deletingUser === user.id"
+                                                class="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 disabled:opacity-50 transition-colors"
+                                            >
+                                                {{ deletingUser === user.id ? 'Ջնջվում է...' : 'Ջնջել' }}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -350,11 +391,103 @@
                 </div>
             </div>
         </Transition>
+
+        <!-- Change Password Modal -->
+        <Transition name="fade">
+            <div
+                v-if="showChangePasswordModal"
+                class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                @click="closeChangePasswordModal"
+            >
+                <div
+                    class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col"
+                    @click.stop
+                >
+                    <!-- Modal Header -->
+                    <div class="p-6 border-b border-gray-200">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-xl font-semibold text-gray-900">
+                                Փոխել գաղտնաբառը - {{ selectedUserForPasswordChange?.name }}
+                            </h3>
+                            <button
+                                @click="closeChangePasswordModal"
+                                class="text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Modal Body -->
+                    <div class="p-6 overflow-y-auto flex-1">
+                        <form @submit.prevent="submitPasswordChange" class="space-y-4">
+                            <!-- New Password -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Նոր գաղտնաբառ *</label>
+                                <input
+                                    v-model="passwordChangeForm.password"
+                                    type="password"
+                                    required
+                                    minlength="8"
+                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-[#F15A2B] focus:ring-[#F15A2B] px-3 py-2"
+                                    placeholder="Մուտքագրեք նոր գաղտնաբառը"
+                                />
+                                <div v-if="passwordChangeForm.errors.password" class="mt-1 text-sm text-red-600">
+                                    {{ passwordChangeForm.errors.password }}
+                                </div>
+                            </div>
+
+                            <!-- Confirm Password -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Հաստատել գաղտնաբառը *</label>
+                                <input
+                                    v-model="passwordChangeForm.password_confirmation"
+                                    type="password"
+                                    required
+                                    minlength="8"
+                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-[#F15A2B] focus:ring-[#F15A2B] px-3 py-2"
+                                    placeholder="Կրկին մուտքագրեք գաղտնաբառը"
+                                />
+                                <div v-if="passwordChangeForm.errors.password_confirmation" class="mt-1 text-sm text-red-600">
+                                    {{ passwordChangeForm.errors.password_confirmation }}
+                                </div>
+                            </div>
+
+                            <!-- Error Messages -->
+                            <div v-if="passwordChangeForm.errors && Object.keys(passwordChangeForm.errors).length > 0" class="text-sm text-red-600">
+                                <div v-for="(error, key) in passwordChangeForm.errors" :key="key">
+                                    {{ error }}
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Modal Footer -->
+                    <div class="p-6 border-t border-gray-200 flex justify-end gap-3">
+                        <button
+                            @click="closeChangePasswordModal"
+                            class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                            Չեղարկել
+                        </button>
+                        <button
+                            @click="submitPasswordChange"
+                            :disabled="passwordChangeForm.processing"
+                            class="px-4 py-2 bg-[#F15A2B] text-white rounded-md hover:bg-[#BF3206] disabled:opacity-50 transition-colors"
+                        >
+                            {{ passwordChangeForm.processing ? 'Պահպանվում է...' : 'Պահպանել' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Transition>
     </AuthenticatedLayout>
 </template>
 
 <script setup>
-import { Head, router } from '@inertiajs/vue3';
+import { Head, router, useForm } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import axios from 'axios';
@@ -430,6 +563,15 @@ const savingGroups = ref(false);
 
 // Teacher Role Management
 const processingUser = ref(null);
+const deletingUser = ref(null);
+
+// Change Password Modal
+const showChangePasswordModal = ref(false);
+const selectedUserForPasswordChange = ref(null);
+const passwordChangeForm = useForm({
+    password: '',
+    password_confirmation: '',
+});
 
 const openGroupsModal = async (student) => {
     selectedStudent.value = student;
@@ -532,6 +674,61 @@ const removeTeacherRole = async (user) => {
         alert(message);
         processingUser.value = null;
     }
+};
+
+const deleteUser = async (user) => {
+    if (!confirm(`Դուք համոզված եք, որ ցանկանում եք ջնջել ${user.name} օգտատիրոջը?\n\nՆշում: Այս գործողությունը կջնջի օգտատիրոջը և նրա բոլոր աշակերտների պրոֆիլները: Այս գործողությունը չի կարող հետ վերադարձվել:`)) {
+        return;
+    }
+
+    deletingUser.value = user.id;
+    try {
+        router.delete(route('admin.users.destroy', user.id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                deletingUser.value = null;
+            },
+            onError: (errors) => {
+                console.error('Error deleting user:', errors);
+                alert('Օգտատիրոջ ջնջելը ձախողվեց: Խնդրում ենք կրկին փորձել:');
+                deletingUser.value = null;
+            },
+        });
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        alert('Օգտատիրոջ ջնջելը ձախողվեց: Խնդրում ենք կրկին փորձել:');
+        deletingUser.value = null;
+    }
+};
+
+const openChangePasswordModal = (user) => {
+    selectedUserForPasswordChange.value = user;
+    passwordChangeForm.password = '';
+    passwordChangeForm.password_confirmation = '';
+    passwordChangeForm.clearErrors();
+    showChangePasswordModal.value = true;
+};
+
+const closeChangePasswordModal = () => {
+    showChangePasswordModal.value = false;
+    selectedUserForPasswordChange.value = null;
+    passwordChangeForm.reset();
+    passwordChangeForm.clearErrors();
+};
+
+const submitPasswordChange = () => {
+    if (!selectedUserForPasswordChange.value) return;
+
+    passwordChangeForm.post(route('admin.users.update-password', selectedUserForPasswordChange.value.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            alert('Գաղտնաբառը հաջողությամբ փոխվել է:');
+            closeChangePasswordModal();
+        },
+        onError: (errors) => {
+            console.error('Error updating password:', errors);
+        },
+    });
 };
 </script>
 

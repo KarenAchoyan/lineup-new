@@ -105,6 +105,7 @@ class ProfileController extends Controller
                 'birthday' => $student->birthday?->format('Y-m-d'),
                 'course_id' => $student->course_id,
                 'course_name' => $student->course->getName($locale),
+                'course_price' => $student->course->price,
                 'branch_id' => $student->branch_id,
                 'branch_name' => $student->branch->getName($locale),
                 'has_paid_this_month' => $student->hasPaidThisMonth(),
@@ -244,11 +245,18 @@ class ProfileController extends Controller
     public function storeStudent(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                'regex:/^[\x{0531}-\x{0556}\x{0561}-\x{0587}\s]+$/u', // Only Armenian letters and spaces
+            ],
             'biradi' => 'nullable|string|max:255|unique:students,biradi',
             'course_id' => 'required|exists:courses,id',
             'branch_id' => 'required|exists:branches,id',
-            'birthday' => 'nullable|date',
+            'birthday' => 'required|date',
+        ], [
+            'name.regex' => 'Ուսանողի անունը պետք է պարունակի միայն հայատառ տառեր:',
         ]);
 
         // Verify that the branch belongs to the selected course
@@ -273,11 +281,18 @@ class ProfileController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                'regex:/^[\x{0531}-\x{0556}\x{0561}-\x{0587}\s]+$/u', // Only Armenian letters and spaces
+            ],
             'biradi' => 'nullable|string|max:255|unique:students,biradi,' . $student->id,
             'course_id' => 'required|exists:courses,id',
             'branch_id' => 'required|exists:branches,id',
             'birthday' => 'nullable|date',
+        ], [
+            'name.regex' => 'Ուսանողի անունը պետք է պարունակի միայն հայատառ տառեր:',
         ]);
 
         // Verify that the branch belongs to the selected course
